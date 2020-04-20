@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -88,6 +89,13 @@ func checkError(e error) {
 	}
 }
 
+var debug bool
+
+func init() {
+	flag.BoolVar(&debug, "debug", false, "debug mode")
+	flag.Parse()
+}
+
 func main() {
 	manager := &Manager{}
 
@@ -103,20 +111,23 @@ func main() {
 	app.SetRoot(layout, true)
 
 	appContainer := tview.NewFlex().SetDirection(tview.FlexRow)
-	logContainer := tview.NewFlex()
+	debuggerContainer := tview.NewFlex()
 
 	layout.AddItem(appContainer, 0, 5, false)
-	layout.AddItem(logContainer, 0, 1, false)
 
-	logView := tview.NewTextView().
+	if debug {
+		layout.AddItem(debuggerContainer, 0, 1, false)
+	}
+
+	debugger := tview.NewTextView().
 		SetDynamicColors(true).
 		SetChangedFunc(func() {
 			app.Draw()
 		})
-	logView.SetTitle("log").SetBorder(true)
+	debugger.SetTitle("debugger").SetBorder(true)
 
-	logContainer.AddItem(logView, 0, 1, true)
-	logger := log.New(logView, "", log.LstdFlags)
+	debuggerContainer.AddItem(debugger, 0, 1, true)
+	logger := log.New(debugger, "", log.LstdFlags)
 
 	list := tview.NewList().ShowSecondaryText(false)
 	list.SetBorder(true)
