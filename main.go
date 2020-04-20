@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"syscall"
 
+	"github.com/gdamore/tcell"
 	"github.com/rivo/tview"
 	"gopkg.in/yaml.v2"
 )
@@ -91,6 +92,16 @@ func checkError(e error) {
 
 var debug bool
 
+const helpMessage = `
+Keyboard commands
+
+?       - toggle help menu
+.       - toggle debugger
+j, Down - select previous item
+k, Up   - select next item
+Enter   - start/stop slected service
+`
+
 func init() {
 	flag.BoolVar(&debug, "debug", false, "debug mode")
 	flag.Parse()
@@ -107,8 +118,25 @@ func main() {
 
 	app := tview.NewApplication()
 
+	modal := func(p tview.Primitive, width, height int) tview.Primitive {
+		return tview.NewFlex().
+			AddItem(nil, 0, 1, false).
+			AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+				AddItem(nil, 0, 1, false).
+				AddItem(p, height, 1, false).
+				AddItem(nil, 0, 1, false), width, 1, false).
+			AddItem(nil, 0, 1, false)
+	}
+
+	help := tview.NewTextView()
+	help.SetBorder(true).SetBackgroundColor(tcell.ColorDarkSlateGrey).SetTitle("Help")
+	fmt.Fprintf(help, "%s", helpMessage)
+
 	layout := tview.NewFlex().SetDirection(tview.FlexRow)
-	app.SetRoot(layout, true)
+	pages := tview.NewPages().
+		AddPage("app", layout, true, true).
+		AddPage("help", modal(help, 40, 10), true, false)
+	app.SetRoot(pages, true)
 
 	appContainer := tview.NewFlex().SetDirection(tview.FlexRow)
 	debuggerContainer := tview.NewFlex()
@@ -130,7 +158,7 @@ func main() {
 	logger := log.New(debugger, "", log.LstdFlags)
 
 	list := tview.NewList().ShowSecondaryText(false)
-	list.SetBorder(true)
+	list.SetTitle("Services (Press ? to open help menu)").SetBorder(true)
 	for _, s := range manager.Services {
 		s.Prepare(app, logger)
 		list.AddItem(s.NameWithPid(), "", 0, nil)
@@ -157,6 +185,34 @@ func main() {
 			list.AddItem(s.NameWithPid(), "", 0, nil)
 		}
 		list.SetCurrentItem(i)
+	})
+
+	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Rune() == '?' {
+			if name, _ := pages.GetFrontPage(); name == "help" {
+				pages.HidePage("help")
+				app.SetFocus(list)
+			} else {
+				pages.ShowPage("help")
+			}
+			return nil
+		}
+		if event.Rune() == '.' {
+			if debug {
+				layout.RemoveItem(debuggerContainer)
+				debug = false
+			} else {
+				layout.AddItem(debuggerContainer, 0, 1, false)
+				debug = true
+			}
+		}
+		if event.Rune() == 'j' {
+			return tcell.NewEventKey(tcell.KeyDown, 'j', tcell.ModNone)
+		}
+		if event.Rune() == 'k' {
+			return tcell.NewEventKey(tcell.KeyUp, 'k', tcell.ModNone)
+		}
+		return event
 	})
 
 	if err := app.SetFocus(list).Run(); err != nil {
