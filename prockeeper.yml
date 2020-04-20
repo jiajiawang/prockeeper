@@ -1,0 +1,5 @@
+services:
+  - name: "serv 1"
+    command: "while true; do echo \"stop me 1...\"; sleep 1; done"
+  - name: "serv 2"
+    command: "while true; do echo \"stop me 2...\"; sleep 1; done"
