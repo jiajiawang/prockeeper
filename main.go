@@ -66,6 +66,7 @@ func (s *Service) toggle() {
 	if s.Cmd == nil {
 		c := exec.Command("sh", "-c", s.Command)
 		c.Stdout = s.LogView
+		c.Stderr = s.LogView
 		s.Cmd = c
 		if err := c.Start(); err != nil {
 			s.log(err)
