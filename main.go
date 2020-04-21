@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os/exec"
@@ -15,11 +16,12 @@ import (
 
 // Service ...
 type Service struct {
-	Name    string
-	Command string
-	Cmd     *exec.Cmd `json:"-"`
-	Logger  *log.Logger
-	LogView *tview.TextView
+	Name      string
+	Command   string
+	Cmd       *exec.Cmd `json:"-"`
+	Logger    *log.Logger
+	LogView   *tview.TextView
+	LogWriter io.Writer
 }
 
 // Manager ...
@@ -40,6 +42,7 @@ func (s *Service) Prepare(app *tview.Application, logger *log.Logger) {
 
 	textView.SetBorder(true).SetTitle(s.Command)
 	s.LogView = textView
+	s.LogWriter = tview.ANSIWriter(textView)
 }
 
 func (s *Service) log(v ...interface{}) {
@@ -66,8 +69,8 @@ func (s *Service) toggle() {
 	if s.Cmd == nil {
 		c := exec.Command("sh", "-c", s.Command)
 		c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-		c.Stdout = s.LogView
-		c.Stderr = s.LogView
+		c.Stdout = s.LogWriter
+		c.Stderr = s.LogWriter
 		s.Cmd = c
 		if err := c.Start(); err != nil {
 			s.log(err)
