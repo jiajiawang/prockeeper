@@ -65,6 +65,7 @@ func (s *Service) NameWithPid() string {
 func (s *Service) toggle() {
 	if s.Cmd == nil {
 		c := exec.Command("sh", "-c", s.Command)
+		c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 		c.Stdout = s.LogView
 		c.Stderr = s.LogView
 		s.Cmd = c
@@ -80,7 +81,8 @@ func (s *Service) toggle() {
 		}()
 	} else {
 		s.log("Stoping job", s.Name)
-		s.Cmd.Process.Signal(syscall.SIGTERM)
+		pid, _ := syscall.Getpgid(s.Cmd.Process.Pid)
+		syscall.Kill(-pid, syscall.SIGTERM)
 		s.Cmd = nil
 	}
 }
