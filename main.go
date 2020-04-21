@@ -106,6 +106,7 @@ Keyboard commands
 j, Down - select previous item
 k, Up   - select next item
 Enter   - start/stop slected service
+Ctrl-C  - exit app
 `
 
 func init() {
@@ -193,6 +194,19 @@ func main() {
 		list.SetCurrentItem(i)
 	})
 
+	exitMenu := tview.NewModal().
+		SetText("Running services!").
+		AddButtons([]string{"Force Quit", "Cancel"}).
+		SetFocus(1).
+		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			if buttonLabel == "Force Quit" {
+				app.Stop()
+			} else {
+				pages.RemovePage("exit")
+				app.SetFocus(list)
+			}
+		})
+
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Rune() == '?' {
 			if name, _ := pages.GetFrontPage(); name == "help" {
@@ -217,6 +231,21 @@ func main() {
 		}
 		if event.Rune() == 'k' {
 			return tcell.NewEventKey(tcell.KeyUp, 'k', tcell.ModNone)
+		}
+		if event.Key() == tcell.KeyCtrlC {
+			allStopped := true
+			for _, s := range manager.Services {
+				if s.Cmd != nil {
+					allStopped = false
+					break
+				}
+			}
+			if allStopped {
+				return event
+			} else {
+				pages.AddPage("exit", exitMenu, true, true)
+				return nil
+			}
 		}
 		return event
 	})
