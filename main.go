@@ -65,28 +65,43 @@ func (s *Service) NameWithPid() string {
 	return fmt.Sprintf("[%6d] %s", pid, s.Name)
 }
 
-func (s *Service) toggle() {
-	if s.Cmd == nil {
-		c := exec.Command("sh", "-c", s.Command)
-		c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-		c.Stdout = s.LogWriter
-		c.Stderr = s.LogWriter
-		s.Cmd = c
-		if err := c.Start(); err != nil {
+func (s *Service) start() bool {
+	if s.Cmd != nil {
+		return false
+	}
+	c := exec.Command("sh", "-c", s.Command)
+	c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	c.Stdout = s.LogWriter
+	c.Stderr = s.LogWriter
+	s.Cmd = c
+	if err := c.Start(); err != nil {
+		s.log(err)
+	}
+	s.log("Started job", s.NameWithPid())
+	go func() {
+		if err := c.Wait(); err != nil {
 			s.log(err)
 		}
-		s.log("Started job", s.NameWithPid())
-		go func() {
-			if err := c.Wait(); err != nil {
-				s.log(err)
-			}
-			s.log("Job stopped", s.Name)
-		}()
-	} else {
-		s.log("Stoping job", s.Name)
-		pid, _ := syscall.Getpgid(s.Cmd.Process.Pid)
-		syscall.Kill(-pid, syscall.SIGTERM)
-		s.Cmd = nil
+		s.log("Job stopped", s.Name)
+	}()
+	return true
+}
+
+func (s *Service) stop() bool {
+	if s.Cmd == nil {
+		return false
+	}
+	s.log("Stoping job", s.Name)
+	pid, _ := syscall.Getpgid(s.Cmd.Process.Pid)
+	syscall.Kill(-pid, syscall.SIGTERM)
+	s.Cmd = nil
+	return true
+}
+
+func (s *Service) toggle() {
+	started := s.start()
+	if !started {
+		s.stop()
 	}
 }
 
@@ -101,12 +116,15 @@ var debug bool
 const helpMessage = `
 Keyboard commands
 
-?       - toggle help menu
-.       - toggle debugger
-j, Down - select previous item
-k, Up   - select next item
-Enter   - start/stop slected service
-Ctrl-C  - exit app
+j      - Select previous item
+k      - Select next item
+Enter  - Start/stop selected service
+u      - Start all services
+d      - Stop all services
+
+?      - Show/hide help menu
+.      - Show/hide debugger
+Ctrl-C - Exit app
 `
 
 func init() {
@@ -142,7 +160,7 @@ func main() {
 	layout := tview.NewFlex().SetDirection(tview.FlexRow)
 	pages := tview.NewPages().
 		AddPage("app", layout, true, true).
-		AddPage("help", modal(help, 40, 10), true, false)
+		AddPage("help", modal(help, 40, 20), true, false)
 	app.SetRoot(pages, true)
 
 	appContainer := tview.NewFlex().SetDirection(tview.FlexRow)
@@ -165,7 +183,7 @@ func main() {
 	logger := log.New(debugger, "", log.LstdFlags)
 
 	list := tview.NewList().ShowSecondaryText(false)
-	list.SetTitle("Services (Press ? to open help menu)").SetBorder(true)
+	list.SetTitle("Services (Press ? to show help)").SetBorder(true)
 	for _, s := range manager.Services {
 		s.Prepare(app, logger)
 		list.AddItem(s.NameWithPid(), "", 0, nil)
@@ -207,6 +225,8 @@ func main() {
 			}
 		})
 
+	var currentSelection int
+
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Rune() == '?' {
 			if name, _ := pages.GetFrontPage(); name == "help" {
@@ -246,6 +266,26 @@ func main() {
 				pages.AddPage("exit", exitMenu, true, true)
 				return nil
 			}
+		}
+		if event.Rune() == 'u' {
+			currentSelection = list.GetCurrentItem()
+			list.Clear()
+			for _, s := range manager.Services {
+				s.start()
+				list.AddItem(s.NameWithPid(), "", 0, nil)
+			}
+			list.SetCurrentItem(currentSelection)
+			return nil
+		}
+		if event.Rune() == 'd' {
+			currentSelection = list.GetCurrentItem()
+			list.Clear()
+			for _, s := range manager.Services {
+				s.stop()
+				list.AddItem(s.NameWithPid(), "", 0, nil)
+			}
+			list.SetCurrentItem(currentSelection)
+			return nil
 		}
 		return event
 	})
