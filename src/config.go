@@ -11,6 +11,7 @@ type Config struct {
 	Services []*struct {
 		Name    string
 		Command string
+		Dir     string
 	}
 }
 

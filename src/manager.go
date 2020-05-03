@@ -2,6 +2,7 @@ package prockeeper
 
 import (
 	"flag"
+	"fmt"
 	"log"
 
 	"github.com/gdamore/tcell"
@@ -104,16 +105,17 @@ func (manager *Manager) Run() {
 	}()
 
 	for _, s := range config.Services {
-		service := NewService(s.Name, s.Command, updated, logger, serviceLog)
+		service := NewService(s.Name, s.Command, s.Dir, updated, logger, serviceLog)
 		manager.Services = append(manager.Services, service)
 	}
 	currentService := manager.Services[0]
+	serviceLog.SetTitle(fmt.Sprintf("%s: %s", currentService.Dir, currentService.Command))
 	manager.refreshList()
 
 	list.SetChangedFunc(func(i int, n string, v string, t rune) {
 		currentService.PauseStdout()
 		s := manager.Services[i]
-		serviceLog.SetTitle(s.Command)
+		serviceLog.SetTitle(fmt.Sprintf("%s: %s", s.Dir, s.Command))
 		serviceLog.SetText(s.History.String())
 		s.ResumeStdout()
 		currentService = s

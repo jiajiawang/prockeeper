@@ -13,12 +13,18 @@ const usage = `usage: prockeeper [options]
   --help          Show this help
   -c path_to_yml  Specify the path of yaml file (default: './prockeeper.yml')
 
+Service Options:
+  [name]    Specify the name of the service
+  [command] Specify the exec command
+  [dir]     Specify the working directory
+
 Example yaml:
   services:
     - name: "rails server"
       command: "rails s"
     - name: "node server"
       command: "npm start"
+      dir: "./client"
 `
 
 const helpMessage = `

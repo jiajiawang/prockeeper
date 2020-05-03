@@ -16,6 +16,7 @@ import (
 type Service struct {
 	Name    string
 	Command string
+	Dir     string
 	Cmd     *exec.Cmd `json:"-"`
 	Logger  *log.Logger
 	History *bytes.Buffer
@@ -26,10 +27,16 @@ type Service struct {
 }
 
 // NewService ...
-func NewService(name, command string, updated chan struct{}, logger *log.Logger, out io.Writer) *Service {
+func NewService(
+	name, command, dir string,
+	updated chan struct{},
+	logger *log.Logger,
+	out io.Writer,
+) *Service {
 	s := &Service{
 		Name:    name,
 		Command: command,
+		Dir:     dir,
 		Updated: updated,
 	}
 	s.Logger = logger
@@ -77,6 +84,7 @@ func (s *Service) Start() error {
 	}
 
 	c := exec.Command("sh", "-c", s.Command)
+	c.Dir = s.Dir
 	s.Cmd = c
 	c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	c.Stdout = s.cmdLogWriter

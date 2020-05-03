@@ -10,21 +10,29 @@ A process manager app written in go.
 
 ## Usage
 
-Add `prockeeper.yml` to project root and run `prockeeper`.
-Or use `prockeeper -c path_to_yml` to specify the config file.
+`prockeeper --help`
+
+```
+usage: prockeeper [options]
+
+  --help          Show this help
+  -c path_to_yml  Specify the path of yaml file (default: './prockeeper.yml')
+
+Service Options:
+  [name]    Specify the name of the service
+  [command] Specify the exec command
+  [dir]     Specify the working directory
 
 Example yaml:
-```
-services:
-  - name: "rails server"
-  command: "rails s"
-  - name: "node server"
-  command: "npm start"
-```
+  services:
+    - name: "rails server"
+      command: "rails s"
+    - name: "node server"
+      command: "npm start"
+      dir: "./client"
 
-## Keyboard commands
+Keyboard commands
 
-```
 j      - Select previous item
 k      - Select next item
 Enter  - Start/stop selected service
