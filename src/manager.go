@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"sync"
 
 	"github.com/gdamore/tcell"
 	"github.com/rivo/tview"
@@ -21,11 +22,15 @@ type Manager struct {
 var debug = false
 var configFile string
 
+var mu sync.Mutex
+
 func init() {
 	flag.StringVar(&configFile, "c", "./prockeeper.yml", "config file")
 }
 
 func (manager *Manager) refreshList() {
+	mu.Lock()
+	defer mu.Unlock()
 	currentSelection := manager.list.GetCurrentItem()
 	manager.list.Clear()
 	for _, s := range manager.Services {

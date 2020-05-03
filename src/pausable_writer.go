@@ -3,12 +3,14 @@ package prockeeper
 import (
 	"io"
 	"io/ioutil"
+	"sync"
 )
 
 // PausableWriter ...
 type PausableWriter struct {
 	writer  io.Writer
 	discard bool
+	sync.Mutex
 }
 
 // NewPausableWriter ...
@@ -30,10 +32,14 @@ func (pw *PausableWriter) Write(p []byte) (n int, err error) {
 
 // Pause ...
 func (pw *PausableWriter) Pause() {
+	pw.Lock()
+	defer pw.Unlock()
 	pw.discard = true
 }
 
 // Resume ...
 func (pw *PausableWriter) Resume() {
+	pw.Lock()
+	defer pw.Unlock()
 	pw.discard = false
 }
