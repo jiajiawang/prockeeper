@@ -42,6 +42,7 @@ func NewService(
 	s.Logger = logger
 	s.History = new(bytes.Buffer)
 	s.stdout = NewPausableWriter(out)
+	s.stdout.Pause()
 	s.cmdLogWriter = tview.ANSIWriter(io.MultiWriter(s.History, s.stdout))
 	return s
 }
