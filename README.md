@@ -2,6 +2,8 @@
 
 A process manager app written in go.
 
+<img src="https://raw.githubusercontent.com/jiajiawang/prockeeper/master/prockeeper-preview.png" width=640>
+
 ## Installation
 
 `go get github.com/jiajiawang/prockeeper`
