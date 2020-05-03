@@ -15,11 +15,11 @@ type Manager struct {
 	logger   *log.Logger
 }
 
-var debug bool
+var debug = false
+var configFile string
 
 func init() {
-	flag.BoolVar(&debug, "debug", false, "debug mode")
-	flag.Parse()
+	flag.StringVar(&configFile, "c", "./prockeeper.yml", "config file")
 }
 
 func (manager *Manager) refreshList() {
@@ -53,7 +53,7 @@ func (manager *Manager) stopAll() {
 
 // Run ...
 func (manager *Manager) Run() {
-	config := ParseConfig()
+	config := ParseConfig(configFile)
 
 	app := tview.NewApplication()
 
@@ -91,9 +91,6 @@ func (manager *Manager) Run() {
 
 	debuggerContainer := tview.NewFlex()
 	debuggerContainer.AddItem(debugger, 0, 1, true)
-	if debug {
-		layout.AddItem(debuggerContainer, 0, 1, false)
-	}
 
 	logger := log.New(debugger, "", log.LstdFlags)
 	manager.logger = logger

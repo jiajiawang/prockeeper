@@ -10,17 +10,17 @@ A process manager app written in go.
 
 ## Usage
 
-Add `prockeeper.yml` to project root and run `prockeeper`
+Add `prockeeper.yml` to project root and run `prockeeper`.
+Or use `prockeeper -c path_to_yml` to specify the config file.
 
 Example yaml:
 ```
 services:
-  - name: "date"
-  command: "while true; do date; sleep 1; done"
-  - name: "time in milliseconds"
-  command: "while true; do ruby -e 'puts Time.now.to_f'; sleep 0.1; done"
+  - name: "rails server"
+  command: "rails s"
+  - name: "node server"
+  command: "npm start"
 ```
-
 
 ## Keyboard commands
 
