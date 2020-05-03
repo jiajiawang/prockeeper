@@ -3,7 +3,9 @@ package prockeeper
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
+	"os"
 
 	"github.com/gdamore/tcell"
 	"github.com/rivo/tview"
@@ -93,7 +95,12 @@ func (manager *Manager) Run() {
 	debuggerContainer := tview.NewFlex()
 	debuggerContainer.AddItem(debugger, 0, 1, true)
 
-	logger := log.New(debugger, "", log.LstdFlags)
+	appLog, err := os.OpenFile("/tmp/prockeeper.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	CheckError(err)
+
+	defer appLog.Close()
+
+	logger := log.New(io.MultiWriter(debugger, appLog), "", log.LstdFlags)
 	manager.logger = logger
 
 	updated := make(chan struct{})
@@ -154,6 +161,7 @@ func (manager *Manager) Run() {
 				debug = false
 			} else {
 				layout.AddItem(debuggerContainer, 0, 1, false)
+				debugger.ScrollToEnd()
 				debug = true
 			}
 		}
