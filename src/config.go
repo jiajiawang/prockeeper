@@ -1,6 +1,7 @@
 package prockeeper
 
 import (
+	"flag"
 	"io/ioutil"
 
 	"gopkg.in/yaml.v2"
@@ -14,9 +15,16 @@ type Config struct {
 	}
 }
 
+var configFile string
+
+func init() {
+	flag.StringVar(&configFile, "c", "./prockeeper.yml", "config file")
+	flag.Parse()
+}
+
 // ParseConfig ...
 func ParseConfig() *Config {
-	file, err := ioutil.ReadFile("./prockeeper.yml")
+	file, err := ioutil.ReadFile(configFile)
 	CheckError(err)
 
 	config := &Config{}
