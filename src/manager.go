@@ -95,7 +95,6 @@ func (manager *Manager) Run() {
 		layout.AddItem(debuggerContainer, 0, 1, false)
 	}
 
-
 	logger := log.New(debugger, "", log.LstdFlags)
 	manager.logger = logger
 
@@ -177,6 +176,7 @@ func (manager *Manager) Run() {
 				return event
 			}
 			pages.AddPage("exit", exitMenu, true, true)
+			app.SetFocus(exitMenu)
 			return nil
 		}
 		if event.Rune() == 'u' {
