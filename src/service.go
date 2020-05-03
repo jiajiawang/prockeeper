@@ -2,7 +2,6 @@ package prockeeper
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -81,7 +80,7 @@ func (s *Service) NameWithPid() string {
 func (s *Service) Start() error {
 	// stopped := make(chan struct{})
 	if s.Cmd != nil {
-		return errors.New("Error: service is running")
+		return fmt.Errorf("Error: %s is running", s.Name)
 	}
 
 	c := exec.Command("sh", "-c", s.Command)
@@ -114,7 +113,7 @@ func (s *Service) Stop() error {
 	s.log("Stopping service -", s.Name)
 
 	if s.Cmd == nil {
-		return errors.New("Not running")
+		return fmt.Errorf("Error: %s is not running", s.Name)
 	}
 
 	pid, err := syscall.Getpgid(s.Cmd.Process.Pid)
