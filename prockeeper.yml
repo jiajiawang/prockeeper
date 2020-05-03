@@ -1,5 +1,5 @@
 services:
-  - name: "serv 1"
-    command: "while true; do echo \"stop me 1...\"; sleep 1; done"
-  - name: "serv 2"
-    command: "while true; do echo \"stop me 2...\"; sleep 1; done"
+  - name: "date"
+    command: "while true; do date; sleep 1; done"
+  - name: "time in milliseconds"
+    command: "while true; do ruby -e 'puts Time.now.to_f'; sleep 0.1; done"

@@ -15,21 +15,6 @@ type Manager struct {
 	logger   *log.Logger
 }
 
-// func NewManager() *Manager {
-// list := tview.NewList().ShowSecondaryText(false)
-// list.SetTitle("Services (Press ? to show help)").SetBorder(true)
-
-// return &Manager{
-// list: tview.NewList
-// }
-// }
-
-func checkError(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
-
 var debug bool
 
 func init() {
@@ -44,10 +29,6 @@ func (manager *Manager) refreshList() {
 		manager.list.AddItem(s.NameWithPid(), "", 0, nil)
 	}
 	manager.list.SetCurrentItem(currentSelection)
-}
-
-func (manager *Manager) startService(i int) {
-
 }
 
 func (manager *Manager) startAll() {
@@ -70,36 +51,30 @@ func (manager *Manager) stopAll() {
 	}
 }
 
-func (manager *Manager) selectService(i int) {
-
-}
-
 // Run ...
 func (manager *Manager) Run() {
 	config := ParseConfig()
 
-	updated := make(chan struct{})
-
-	for _, s := range config.Services {
-		service := &Service{
-			Name:    s.Name,
-			Command: s.Command,
-			Updated: updated,
-		}
-		manager.Services = append(manager.Services, service)
-	}
-
 	app := tview.NewApplication()
 
-	modal := func(p tview.Primitive, width, height int) tview.Primitive {
-		return tview.NewFlex().
-			AddItem(nil, 0, 1, false).
-			AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
-				AddItem(nil, 0, 1, false).
-				AddItem(p, height, 1, false).
-				AddItem(nil, 0, 1, false), width, 1, false).
-			AddItem(nil, 0, 1, false)
-	}
+	list := tview.NewList().ShowSecondaryText(false)
+	manager.list = list
+	list.SetTitle("Services (Press ? to show help)").SetBorder(true)
+
+	debugger := tview.NewTextView().
+		SetDynamicColors(true).
+		SetChangedFunc(func() {
+			app.Draw()
+		})
+	debugger.SetTitle("debugger").SetBorder(true)
+
+	serviceLog := tview.NewTextView().
+		SetDynamicColors(true).
+		SetRegions(true).
+		SetChangedFunc(func() {
+			app.Draw()
+		})
+	serviceLog.SetBorder(true)
 
 	help := HelpMenu()
 
@@ -110,45 +85,42 @@ func (manager *Manager) Run() {
 	app.SetRoot(pages, true)
 
 	appContainer := tview.NewFlex().SetDirection(tview.FlexRow)
-	debuggerContainer := tview.NewFlex()
-
+	appContainer.AddItem(list, 0, 2, true)
+	appContainer.AddItem(serviceLog, 0, 6, true)
 	layout.AddItem(appContainer, 0, 5, false)
 
+	debuggerContainer := tview.NewFlex()
+	debuggerContainer.AddItem(debugger, 0, 1, true)
 	if debug {
 		layout.AddItem(debuggerContainer, 0, 1, false)
 	}
 
-	debugger := tview.NewTextView().
-		SetDynamicColors(true).
-		SetChangedFunc(func() {
-			app.Draw()
-		})
-	debugger.SetTitle("debugger").SetBorder(true)
 
-	debuggerContainer.AddItem(debugger, 0, 1, true)
 	logger := log.New(debugger, "", log.LstdFlags)
 	manager.logger = logger
 
-	list := tview.NewList().ShowSecondaryText(false)
-	manager.list = list
-	list.SetTitle("Services (Press ? to show help)").SetBorder(true)
-	for _, s := range manager.Services {
-		s.Prepare(app, logger)
-		list.AddItem(s.NameWithPid(), "", 0, nil)
-	}
-
-	appContainer.AddItem(list, 0, 2, true)
-	currentView := manager.Services[0].LogView
-	appContainer.AddItem(currentView, 0, 6, true)
-
-	list.SetChangedFunc(func(index int, n string, v string, t rune) {
-		if currentView != nil {
-			appContainer.RemoveItem(currentView)
+	updated := make(chan struct{})
+	go func() {
+		for range updated {
+			logger.Println("refresh list")
+			manager.refreshList()
 		}
+	}()
 
-		view := manager.Services[index].LogView
-		appContainer.AddItem(view, 0, 6, true)
-		currentView = view
+	for _, s := range config.Services {
+		service := NewService(s.Name, s.Command, updated, logger, serviceLog)
+		manager.Services = append(manager.Services, service)
+	}
+	currentService := manager.Services[0]
+	manager.refreshList()
+
+	list.SetChangedFunc(func(i int, n string, v string, t rune) {
+		currentService.PauseStdout()
+		s := manager.Services[i]
+		serviceLog.SetTitle(s.Command)
+		serviceLog.SetText(s.History.String())
+		s.ResumeStdout()
+		currentService = s
 	})
 
 	list.SetSelectedFunc(func(i int, n string, v string, t rune) {
@@ -217,13 +189,6 @@ func (manager *Manager) Run() {
 		}
 		return event
 	})
-
-	go func() {
-		for range updated {
-			logger.Println("refresh list")
-			manager.refreshList()
-		}
-	}()
 
 	if err := app.SetFocus(list).Run(); err != nil {
 		panic(err)

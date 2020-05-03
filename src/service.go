@@ -1,6 +1,7 @@
 package prockeeper
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -13,29 +14,29 @@ import (
 
 // Service ...
 type Service struct {
-	Name      string
-	Command   string
-	Cmd       *exec.Cmd `json:"-"`
-	Logger    *log.Logger
-	LogView   *tview.TextView
-	LogWriter io.Writer
-	Updated   chan struct{}
+	Name    string
+	Command string
+	Cmd     *exec.Cmd `json:"-"`
+	Logger  *log.Logger
+	History *bytes.Buffer
+	Updated chan struct{}
+
+	stdout       *PausableWriter
+	cmdLogWriter io.Writer
 }
 
-// Prepare ...
-func (s *Service) Prepare(app *tview.Application, logger *log.Logger) {
+// NewService ...
+func NewService(name, command string, updated chan struct{}, logger *log.Logger, out io.Writer) *Service {
+	s := &Service{
+		Name:    name,
+		Command: command,
+		Updated: updated,
+	}
 	s.Logger = logger
-
-	textView := tview.NewTextView().
-		SetDynamicColors(true).
-		SetRegions(true).
-		SetChangedFunc(func() {
-			app.Draw()
-		})
-
-	textView.SetBorder(true).SetTitle(s.Command)
-	s.LogView = textView
-	s.LogWriter = tview.ANSIWriter(textView)
+	s.History = new(bytes.Buffer)
+	s.stdout = NewPausableWriter(out)
+	s.cmdLogWriter = tview.ANSIWriter(io.MultiWriter(s.History, s.stdout))
+	return s
 }
 
 func (s *Service) log(v ...interface{}) {
@@ -47,6 +48,16 @@ func (s *Service) pid() int {
 		return s.Cmd.Process.Pid
 	}
 	return 0
+}
+
+// PauseStdout ...
+func (s *Service) PauseStdout() {
+	s.stdout.Pause()
+}
+
+// ResumeStdout ...
+func (s *Service) ResumeStdout() {
+	s.stdout.Resume()
 }
 
 // NameWithPid ...
@@ -66,10 +77,10 @@ func (s *Service) Start() error {
 	}
 
 	c := exec.Command("sh", "-c", s.Command)
-	c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	c.Stdout = s.LogWriter
-	c.Stderr = s.LogWriter
 	s.Cmd = c
+	c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	c.Stdout = s.cmdLogWriter
+	c.Stderr = s.cmdLogWriter
 
 	if err := s.Cmd.Start(); err != nil {
 		return err
@@ -80,18 +91,18 @@ func (s *Service) Start() error {
 			s.log(err)
 		}
 		s.Cmd = nil
-		s.log("Job stopped", s.Name)
+		s.log("Stopped service -", s.Name)
 		s.Updated <- struct{}{}
 	}()
 
-	s.log("Started Job")
+	s.log("Started service -", s.Name)
 	s.Updated <- struct{}{}
 	return nil
 }
 
 // Stop ...
 func (s *Service) Stop() error {
-	s.log("Stoping job", s.Name)
+	s.log("Stopping service -", s.Name)
 
 	if s.Cmd == nil {
 		return errors.New("Not running")
