@@ -28,15 +28,11 @@ func init() {
 	flag.StringVar(&configFile, "c", "./prockeeper.yml", "config file")
 }
 
-func (manager *Manager) refreshList() {
-	mu.Lock()
-	defer mu.Unlock()
-	currentSelection := manager.list.GetCurrentItem()
-	manager.list.Clear()
-	for _, s := range manager.Services {
-		manager.list.AddItem(s.NameWithPid(), "", 0, nil)
-	}
-	manager.list.SetCurrentItem(currentSelection)
+func (manager *Manager) updateListItem(index int) {
+	s := manager.Services[index]
+	title := s.NameWithPid()
+	manager.logger.Println("Update list item: ", index, "-", title)
+	manager.list.SetItemText(index, title, "")
 }
 
 func (manager *Manager) startAll() {
@@ -108,21 +104,20 @@ func (manager *Manager) Run() {
 	logger := log.New(io.MultiWriter(debugger, appLog), "", log.LstdFlags)
 	manager.logger = logger
 
-	updated := make(chan struct{})
+	updated := make(chan int)
 	go func() {
-		for range updated {
-			logger.Println("refresh list")
-			manager.refreshList()
+		for id := range updated {
+			manager.updateListItem(id)
 		}
 	}()
 
-	for _, s := range config.Services {
-		service := NewService(s.Name, s.Command, s.Dir, updated, logger, serviceLog)
+	for i, s := range config.Services {
+		service := NewService(i, s.Name, s.Command, s.Dir, updated, logger, serviceLog)
 		manager.Services = append(manager.Services, service)
+		manager.list.AddItem(service.NameWithPid(), "", 0, nil)
 	}
 	currentService := manager.Services[0]
 	serviceLog.SetTitle(fmt.Sprintf("%s: %s", currentService.Dir, currentService.Command))
-	manager.refreshList()
 
 	list.SetChangedFunc(func(i int, n string, v string, t rune) {
 		currentService.PauseStdout()

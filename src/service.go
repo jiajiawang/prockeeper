@@ -13,13 +13,14 @@ import (
 
 // Service ...
 type Service struct {
+	Id      int
 	Name    string
 	Command string
 	Dir     string
 	Cmd     *exec.Cmd `json:"-"`
 	Logger  *log.Logger
 	History *bytes.Buffer
-	Updated chan struct{}
+	Updated chan int
 
 	stdout       *PausableWriter
 	cmdLogWriter io.Writer
@@ -27,12 +28,14 @@ type Service struct {
 
 // NewService ...
 func NewService(
+	id int,
 	name, command, dir string,
-	updated chan struct{},
+	updated chan int,
 	logger *log.Logger,
 	out io.Writer,
 ) *Service {
 	s := &Service{
+		Id:      id,
 		Name:    name,
 		Command: command,
 		Dir:     dir,
@@ -100,11 +103,11 @@ func (s *Service) Start() error {
 		}
 		s.Cmd = nil
 		s.log("Stopped service -", s.Name)
-		s.Updated <- struct{}{}
+		s.Updated <- s.Id
 	}()
 
 	s.log("Started service -", s.Name)
-	s.Updated <- struct{}{}
+	s.Updated <- s.Id
 	return nil
 }
 
