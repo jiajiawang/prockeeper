@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"sync"
 
 	"github.com/gdamore/tcell"
 	"github.com/rivo/tview"
@@ -21,8 +20,6 @@ type Manager struct {
 
 var debug = false
 var configFile string
-
-var mu sync.Mutex
 
 func init() {
 	flag.StringVar(&configFile, "c", "./prockeeper.yml", "config file")
