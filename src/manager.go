@@ -26,6 +26,7 @@ var mu sync.Mutex
 
 func init() {
 	flag.StringVar(&configFile, "c", "./prockeeper.yml", "config file")
+	flag.BoolVar(&debug, "debug", false, "Show usage")
 }
 
 func (manager *Manager) updateListItem(index int) {
@@ -65,12 +66,13 @@ func (manager *Manager) Run() {
 	manager.list = list
 	list.SetTitle("Services (Press ? to show help)").SetBorder(true)
 
-	debugger := tview.NewTextView().
+	appLogOn := false
+	appLog := tview.NewTextView().
 		SetDynamicColors(true).
 		SetChangedFunc(func() {
 			app.Draw()
 		})
-	debugger.SetTitle("debugger").SetBorder(true)
+	appLog.SetTitle("Application log").SetBorder(true)
 
 	serviceLog := tview.NewTextView().
 		SetDynamicColors(true).
@@ -93,16 +95,17 @@ func (manager *Manager) Run() {
 	appContainer.AddItem(serviceLog, 0, 6, true)
 	layout.AddItem(appContainer, 0, 5, false)
 
-	debuggerContainer := tview.NewFlex()
-	debuggerContainer.AddItem(debugger, 0, 1, true)
+	appLogContainer := tview.NewFlex()
+	appLogContainer.AddItem(appLog, 0, 1, true)
 
-	appLog, err := os.OpenFile("/tmp/prockeeper.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	CheckError(err)
-
-	defer appLog.Close()
-
-	logger := log.New(io.MultiWriter(debugger, appLog), "", log.LstdFlags)
-	manager.logger = logger
+	if debug {
+		logfile, err := os.OpenFile("./prockeeper.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		CheckError(err)
+		defer logfile.Close()
+		manager.logger = log.New(io.MultiWriter(appLog, logfile), "", log.LstdFlags)
+	} else {
+		manager.logger = log.New(appLog, "", log.LstdFlags)
+	}
 
 	updated := make(chan int)
 	go func() {
@@ -112,7 +115,7 @@ func (manager *Manager) Run() {
 	}()
 
 	for i, s := range config.Services {
-		service := NewService(i, s.Name, s.Command, s.Dir, updated, logger, serviceLog)
+		service := NewService(i, s.Name, s.Command, s.Dir, updated, manager.logger, serviceLog)
 		manager.Services = append(manager.Services, service)
 		manager.list.AddItem(service.NameWithPid(), "", 0, nil)
 	}
@@ -156,13 +159,13 @@ func (manager *Manager) Run() {
 			return nil
 		}
 		if event.Rune() == '.' {
-			if debug {
-				layout.RemoveItem(debuggerContainer)
-				debug = false
+			if appLogOn {
+				layout.RemoveItem(appLogContainer)
+				appLogOn = false
 			} else {
-				layout.AddItem(debuggerContainer, 0, 1, false)
-				debugger.ScrollToEnd()
-				debug = true
+				layout.AddItem(appLogContainer, 0, 1, false)
+				appLog.ScrollToEnd()
+				appLogOn = true
 			}
 		}
 		if event.Rune() == 'j' {

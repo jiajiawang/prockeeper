@@ -16,6 +16,7 @@ A process manager app written in go.
 usage: prockeeper [options]
 
   --help          Show this help
+  --debug         Write application log to ./prockeeper.log
   -c path_to_yml  Specify the path of yaml file (default: './prockeeper.yml')
 
 Service Options:
@@ -40,6 +41,6 @@ u      - Start all services
 d      - Stop all services
 
 ?      - Show/hide help menu
-.      - Show/hide debugger
+.      - Show/hide application log
 Ctrl-C - Exit app
 ```
