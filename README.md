@@ -6,7 +6,7 @@ A process manager app written in go.
 
 ## Installation
 
-`go get github.com/jiajiawang/prockeeper`
+`go install github.com/jiajiawang/prockeeper@latest`
 
 ## Usage
 
