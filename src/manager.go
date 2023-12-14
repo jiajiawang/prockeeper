@@ -18,8 +18,10 @@ type Manager struct {
 	logger   *log.Logger
 }
 
-var debug = false
-var configFile string
+var (
+	debug      = false
+	configFile string
+)
 
 func init() {
 	flag.StringVar(&configFile, "c", "./prockeeper.yml", "config file")
@@ -64,6 +66,8 @@ func (manager *Manager) Run() {
 	list.SetTitle("Services (Press ? to show help)").SetBorder(true)
 
 	appLogOn := false
+	serviceLogOn := true
+
 	appLog := tview.NewTextView().
 		SetDynamicColors(true).
 		SetChangedFunc(func() {
@@ -89,11 +93,14 @@ func (manager *Manager) Run() {
 
 	appContainer := tview.NewFlex().SetDirection(tview.FlexRow)
 	appContainer.AddItem(list, 0, 2, true)
-	appContainer.AddItem(serviceLog, 0, 6, true)
-	layout.AddItem(appContainer, 0, 5, false)
+	layout.AddItem(appContainer, 0, 2, false)
+
+	serviceLogContainer := tview.NewFlex()
+	serviceLogContainer.AddItem(serviceLog, 0, 5, true)
+	layout.AddItem(serviceLogContainer, 0, 6, false)
 
 	appLogContainer := tview.NewFlex()
-	appLogContainer.AddItem(appLog, 0, 1, true)
+	appLogContainer.AddItem(appLog, 0, 2, true)
 
 	if debug {
 		logfile, err := os.OpenFile("./prockeeper.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -160,9 +167,19 @@ func (manager *Manager) Run() {
 				layout.RemoveItem(appLogContainer)
 				appLogOn = false
 			} else {
-				layout.AddItem(appLogContainer, 0, 1, false)
+				layout.AddItem(appLogContainer, 0, 2, false)
 				appLog.ScrollToEnd()
 				appLogOn = true
+			}
+		}
+		if event.Rune() == ',' {
+			if serviceLogOn {
+				layout.RemoveItem(serviceLogContainer)
+				serviceLogOn = false
+			} else {
+				layout.AddItem(serviceLogContainer, 0, 6, false)
+				serviceLog.ScrollToEnd()
+				serviceLogOn = true
 			}
 		}
 		if event.Rune() == 'j' {

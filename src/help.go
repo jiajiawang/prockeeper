@@ -39,6 +39,7 @@ d      - Stop all services
 
 ?      - Show/hide help menu
 .      - Show/hide application log
+,      - Show/hide process log
 Ctrl-C - Exit app
 `
 
